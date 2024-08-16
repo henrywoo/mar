@@ -80,15 +80,31 @@ Run our interactive visualization [demo](http://colab.research.google.com/github
 
 ### Training
 Script for the default setting (MAR-L, DiffLoss MLP with 3 blocks and a width of 1024 channels, 400 epochs):
+
+- Demo with 2 GPUs, Dataset: nelorth/oxford-flowers
+
+```
+export OUTPUT_DIR=./out
+torchrun --nproc_per_node=2 --nnodes=1 --node_rank=0 \
+train_mar.py \
+--img_size 256 --vae_path pretrained_models/vae/kl16.ckpt --vae_embed_dim 16 --vae_stride 16 --patch_size 1 \
+--model mar_large --diffloss_d 3 --diffloss_w 1024 --class_num 102 --data_path nelorth/oxford-flowers \
+--epochs 40 --warmup_epochs 3 --batch_size 8 --blr 1.0e-4 --diffusion_batch_mul 4 \
+--output_dir ${OUTPUT_DIR} --resume ${OUTPUT_DIR}
+```
+
+- Train with 8 GPUs, Dataset: imagenet-1k
+
 ```
 export OUTPUT_DIR=./out
 torchrun --nproc_per_node=8 --nnodes=1 --node_rank=0 \
 train_mar.py \
 --img_size 256 --vae_path pretrained_models/vae/kl16.ckpt --vae_embed_dim 16 --vae_stride 16 --patch_size 1 \
---model mar_large --diffloss_d 3 --diffloss_w 1024 \
---epochs 400 --warmup_epochs 100 --batch_size 64 --blr 1.0e-4 --diffusion_batch_mul 4 \
+--model mar_large --diffloss_d 3 --diffloss_w 1024 --class_num 1000 \
+--epochs 40 --warmup_epochs 3 --batch_size 8 --blr 1.0e-4 --diffusion_batch_mul 4 \
 --output_dir ${OUTPUT_DIR} --resume ${OUTPUT_DIR}
 ```
+
 - Training time is ~1d7h on 32 H100 GPUs with `--batch_size 64`.
 - Add `--online_eval` to evaluate FID during training (every 40 epochs).
 - (Optional) To train with cached VAE latents, add `--use_cached --cached_path ${CACHED_PATH}` to the arguments. 

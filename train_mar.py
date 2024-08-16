@@ -91,7 +91,7 @@ def get_args_parser():
     parser.add_argument('--temperature', default=1.0, type=float, help='diffusion loss sampling temperature')
 
     # Dataset parameters
-    parser.add_argument('--data_path', default='./data/imagenet', type=str,
+    parser.add_argument('--data_path', default='imagenet-1k', type=str,
                         help='dataset path')
     parser.add_argument('--class_num', default=1000, type=int)
 
@@ -130,7 +130,7 @@ def get_args_parser():
     return parser
 
 
-from hiq.cv_torch import get_cv_dataset, DS_PATH_IMAGENET1K
+from hiq.cv_torch import get_cv_dataset, DS_PATH_IMAGENET1K, DS_PATH_OXFLOWER_7K
 
 
 def main(args):
@@ -190,7 +190,7 @@ def main(args):
         drop_last=True,
         pin_memory=args.pin_mem,
     )
-    data_loader_train = get_cv_dataset(path=DS_PATH_IMAGENET1K,
+    data_loader_train = get_cv_dataset(path=args.data_path,
                                        image_size=args.img_size,
                                        split='train',
                                        batch_size=args.batch_size,
