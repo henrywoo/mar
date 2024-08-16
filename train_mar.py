@@ -1,25 +1,22 @@
 import argparse
+import copy
 import datetime
-import numpy as np
 import os
 import time
 from pathlib import Path
 
+import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
-from torch.utils.tensorboard import SummaryWriter
 import torchvision.transforms as transforms
-import torchvision.datasets as datasets
+from torch.utils.tensorboard import SummaryWriter
 
-from util.crop import center_crop_arr
 import util.misc as misc
-from util.misc import NativeScalerWithGradNormCount as NativeScaler
-from util.loader import CachedFolder
-
-from models.vae import AutoencoderKL
-from models import mar
 from engine_mar import train_one_epoch, evaluate
-import copy
+from models import mar
+from models.vae import AutoencoderKL
+from util.crop import center_crop_arr
+from util.misc import NativeScalerWithGradNormCount as NativeScaler
 
 
 def get_args_parser():
@@ -133,6 +130,9 @@ def get_args_parser():
     return parser
 
 
+from hiq.cv_torch import get_cv_dataset, DS_PATH_IMAGENET1K
+
+
 def main(args):
     misc.init_distributed_mode(args)
 
@@ -165,6 +165,7 @@ def main(args):
         transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
     ])
 
+    '''
     if args.use_cached:
         dataset_train = CachedFolder(args.cached_path)
     else:
@@ -177,12 +178,30 @@ def main(args):
     print("Sampler_train = %s" % str(sampler_train))
 
     data_loader_train = torch.utils.data.DataLoader(
-        dataset_train, sampler=sampler_train,
+        dataset_train,
+        sampler=sampler_train,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
         pin_memory=args.pin_mem,
         drop_last=True,
+    )'''
+    loader_params = dict(
+        shuffle=False,
+        drop_last=True,
+        pin_memory=args.pin_mem,
     )
+    data_loader_train = get_cv_dataset(path=DS_PATH_IMAGENET1K,
+                                       image_size=args.img_size,
+                                       split='train',
+                                       batch_size=args.batch_size,
+                                       num_workers=args.num_workers,
+                                       transform=transform_train,
+                                       return_type="pair",
+                                       return_loader=True,
+                                       convert_rgb=True,
+                                       rank=global_rank,
+                                       world_size=args.world_size,
+                                       **loader_params)
 
     # define the vae and mar model
     vae = AutoencoderKL(embed_dim=args.vae_embed_dim, ch_mult=(1, 1, 2, 2, 4), ckpt_path=args.vae_path).cuda().eval()
