@@ -84,13 +84,12 @@ Script for the default setting (MAR-L, DiffLoss MLP with 3 blocks and a width of
 - Demo with 2 GPUs, Dataset: nelorth/oxford-flowers
 
 ```
-export OUTPUT_DIR=./out
 torchrun --nproc_per_node=2 --nnodes=1 --node_rank=0 \
 train_mar.py \
 --img_size 256 --vae_path pretrained_models/vae/kl16.ckpt --vae_embed_dim 16 --vae_stride 16 --patch_size 1 \
 --model mar_large --diffloss_d 3 --diffloss_w 1024 --class_num 102 --data_path nelorth/oxford-flowers --world_size 2 \
 --epochs 40 --warmup_epochs 3 --batch_size 8 --blr 1.0e-4 --diffusion_batch_mul 4 \
---output_dir ${OUTPUT_DIR} --resume ${OUTPUT_DIR}
+--output_dir ./out--resume ./out
 ```
 
 - Train with 8 GPUs, Dataset: imagenet-1k

@@ -18,6 +18,7 @@ from models.vae import AutoencoderKL
 from util.crop import center_crop_arr
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
 
+num_gpus = torch.cuda.device_count()
 
 def get_args_parser():
     parser = argparse.ArgumentParser('MAR training with Diffusion Loss', add_help=False)
@@ -49,7 +50,7 @@ def get_args_parser():
     parser.add_argument('--cfg', default=1.0, type=float, help="classifier-free guidance")
     parser.add_argument('--cfg_schedule', default="linear", type=str)
     parser.add_argument('--label_drop_prob', default=0.1, type=float)
-    parser.add_argument('--eval_freq', type=int, default=40, help='evaluation frequency')
+    parser.add_argument('--eval_freq', type=int, default=1, help='evaluation frequency')
     parser.add_argument('--save_last_freq', type=int, default=5, help='save last frequency')
     parser.add_argument('--online_eval', action='store_true')
     parser.add_argument('--evaluate', action='store_true')
@@ -114,7 +115,7 @@ def get_args_parser():
     parser.set_defaults(pin_mem=True)
 
     # distributed training parameters
-    parser.add_argument('--world_size', default=1, type=int,
+    parser.add_argument('--world_size', default=num_gpus, type=int,
                         help='number of distributed processes')
     parser.add_argument('--local_rank', default=-1, type=int)
     parser.add_argument('--dist_on_itp', action='store_true')
@@ -200,8 +201,9 @@ def main(args):
                                        return_loader=True,
                                        convert_rgb=True,
                                        rank=global_rank,
-                                       world_size=args.world_size,
+                                       world_size=num_gpus,
                                        **loader_params)
+    args.num_images = len(data_loader_train.dataset)
 
     # define the vae and mar model
     vae = AutoencoderKL(embed_dim=args.vae_embed_dim, ch_mult=(1, 1, 2, 2, 4), ckpt_path=args.vae_path).cuda().eval()
