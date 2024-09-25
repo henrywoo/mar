@@ -270,6 +270,7 @@ class MAR(nn.Module):
         if progress:
             indices = tqdm(indices)
         # generate latents
+        last_class_embedding = None
         for step in indices:
             cur_tokens = tokens.clone()
 
@@ -278,13 +279,14 @@ class MAR(nn.Module):
                 class_embedding = self.class_emb(labels)
             else:
                 class_embedding = self.fake_latent.repeat(bsz, 1)
-            if not cfg == 1.0:
+            if cfg != 1.0:
                 tokens = torch.cat([tokens, tokens], dim=0)
                 class_embedding = torch.cat([class_embedding, self.fake_latent.repeat(bsz, 1)], dim=0)
                 mask = torch.cat([mask, mask], dim=0)
 
             # mae encoder
             x = self.forward_mae_encoder(tokens, mask, class_embedding)
+            last_class_embedding = class_embedding
 
             # mae decoder
             z = self.forward_mae_decoder(x, mask)
@@ -308,7 +310,8 @@ class MAR(nn.Module):
                 mask_to_pred = torch.cat([mask_to_pred, mask_to_pred], dim=0)
 
             # sample token latents for this step
-            z = z[mask_to_pred.nonzero(as_tuple=True)]
+            tmp = mask_to_pred.nonzero(as_tuple=True)
+            z0 = z[tmp]
             # cfg schedule follow Muse
             if cfg_schedule == "linear":
                 cfg_iter = 1 + (cfg - 1) * (self.seq_len - mask_len[0]) / self.seq_len
@@ -316,12 +319,12 @@ class MAR(nn.Module):
                 cfg_iter = cfg
             else:
                 raise NotImplementedError
-            sampled_token_latent = self.diffloss.sample(z, temperature, cfg_iter)
-            if not cfg == 1.0:
+            sampled_token_latent = self.diffloss.sample(z0, temperature, cfg_iter)
+            if cfg != 1.0:
                 sampled_token_latent, _ = sampled_token_latent.chunk(2, dim=0)  # Remove null class samples
                 mask_to_pred, _ = mask_to_pred.chunk(2, dim=0)
-
-            cur_tokens[mask_to_pred.nonzero(as_tuple=True)] = sampled_token_latent
+            tmp = mask_to_pred.nonzero(as_tuple=True)
+            cur_tokens[tmp] = sampled_token_latent
             tokens = cur_tokens.clone()
 
         # unpatchify

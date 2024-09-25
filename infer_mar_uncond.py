@@ -45,26 +45,23 @@ seed = 42  # @param {type:"number"}
 torch.manual_seed(seed)
 np.random.seed(seed)
 num_ar_steps = 64  # @param {type:"slider", min:1, max:256, step:1}
-cfg_scale = 8.0  # 4  # @param {type:"slider", min:1, max:10, step:0.1}
+cfg_scale = 4  # @param {type:"slider", min:1, max:10, step:0.1}
 cfg_schedule = "constant"  # @param ["linear", "constant"]
 temperature = 0.5  # @param {type:"slider", min:0.9, max:1.1, step:0.01}
 class_labels = 207, 360, 388, 113, 355, 980, 323, 979  # @param {type:"raw"}
 samples_per_row = 4  # @param {type:"number"}
-import time
+
 with torch.cuda.amp.autocast():
-    start = time.time()
     sampled_tokens = model_mar.sample_tokens(
-        bsz=len(class_labels),
+        bsz=8,  # 例如生成8张图像
         num_iter=num_ar_steps,
         cfg=cfg_scale,
         cfg_schedule=cfg_schedule,
-        labels=torch.Tensor(class_labels).long().cuda(),
+        labels=None,  # 不使用类别标签
         temperature=temperature, progress=True)
     sampled_images = model_vae.decode(sampled_tokens / 0.2325)
-    end = time.time()
-    print(f"time in ms per image: {(end - start) * 1000/8}") # num_ar_steps
 
-save_image(sampled_images, "sample.png", nrow=int(samples_per_row), normalize=True, value_range=(-1, 1))
+save_image(sampled_images, "sample_unconditional.png", nrow=int(samples_per_row), normalize=True, value_range=(-1, 1))
 
 # Convert the images to a NumPy array
 sampled_images = sampled_images.float()
@@ -77,5 +74,5 @@ grid = np.transpose(grid, (1, 2, 0))
 plt.figure(figsize=(10, 10))
 plt.imshow(grid)
 plt.axis('off')
-plt.savefig("infer_mar.png", bbox_inches='tight')
+plt.savefig("infer_mar_unconditional.png", bbox_inches='tight')
 plt.show()
